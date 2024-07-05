@@ -1,34 +1,62 @@
 import pygame
-
+import os
 pygame.init()
 
-#max frame rate
-clock = pygame.time.Clock()
-fps = 60
 
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 600
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) #game window size
 pygame.display.set_caption('Igrica')
 
+#max frame rate
+clock = pygame.time.Clock()
+fps = 60
+
+#game variables
+GRAVITY = 0.70
+
+#player variables
 moving_left = False
 moving_right = False
 
 background_color = (0, 255, 255)
+GREEN = (255, 0, 0)
 
 def draw_Background():
 	screen.fill(background_color)
+	pygame.draw.line(screen, GREEN, (0, 300), (SCREEN_WIDTH, 300)) # ------temporary floor
 
 class Character(pygame.sprite.Sprite):
 	def __init__(self, character_type, x, y, scale, speed): #constructor	
 		pygame.sprite.Sprite.__init__(self)
+		self.alive = True
 		self.character_type = character_type
 		self.speed = speed #in pixels
 		self.direction = 1
+		self.velocity_y = 0
+		self.jump = False
+		self.in_jump_state = True
 		self.flip = False
-		playerImg = pygame.image.load(f'../images/{self.character_type}/Idle/0.png') #loading the character image (player, soldier...)
-		self.playerImg = pygame.transform.scale(playerImg, (int(playerImg.get_width() * scale), (int(playerImg.get_height() * scale))))
+		self.animation_list = []
+		self.frame_index = 0
+		self.action = 0 #0 idle, 1 run
+		self.update_time = pygame.time.get_ticks()#to track the time
+		
+		
+		animation_types = ['Idle', 'Run', 'Jump', 'Die', 'Hurt', 'Shot'] #idle, walk dead etc
+		for animation in animation_types:
+			temp_list = []
+			#check number of items in folder
+			number_of_files = len(os.listdir(f'../images/{self.character_type}/{animation}'))
+
+			for i in range(number_of_files):
+				playerImg = pygame.image.load(f'../images/{self.character_type}/{animation}/{i}.png') #loading the character image (player, soldier...)
+				playerImg = pygame.transform.scale(playerImg, (int(playerImg.get_width() * scale), (int(playerImg.get_height() * scale))))
+				temp_list.append(playerImg)
+			self.animation_list.append(temp_list)
+		
+		self.playerImg = self.animation_list[self.action][self.frame_index]
 		self.rect = self.playerImg.get_rect() #rectangle for player character
 		self.rect.center = (x, y) #position the character on a certain position of the game window
 
@@ -47,9 +75,41 @@ class Character(pygame.sprite.Sprite):
 			self.flip = False
 			self.direction = 1
 		
+		if self.jump == True and self.in_jump_state == False:
+			self.velocity_y = -11 #how high player jumps
+			self.jump = False
+			self.in_jump_state = True
+		
+		#gravity
+		self.velocity_y += GRAVITY
+		if self.velocity_y > 10:
+			self.velocity_y = 10
+		dy += self.velocity_y
+
+		#check collision with floor --- temporary
+		if self.rect.bottom + dy > 300:
+			dy = 300 - self.rect.bottom
+			self.in_jump_state = False
+
 		#change player position
 		self.rect.x += dx
 		self.rect.y += dy
+
+	def update_animation(self):
+		ANIMATION_COOLDOWN = 80 #speed of animation
+		self.playerImg = self.animation_list[self.action][self.frame_index]
+		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
+			self.update_time = pygame.time.get_ticks()
+			self.frame_index += 1
+		#reset back to index 1
+		if self.frame_index >= len(self.animation_list[self.action]):
+			self.frame_index = 0
+
+	def update_action(self, new_action):
+		if new_action != self.action:
+			self.action = new_action
+			self.frame_index = 0
+			self.update_time = pygame.time.get_ticks()
 
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.playerImg,  self.flip, False), self.rect)
@@ -63,8 +123,20 @@ while run: #loop for running the game
 	clock.tick(fps)
 	
 	draw_Background()
+
+	player.update_animation()
 	player.draw()
-	player.move(moving_left, moving_right)
+
+	if player.alive:
+		if player.in_jump_state:
+			player.update_action(2)
+		#change animation if moving left or right
+		elif moving_left or moving_right:
+			player.update_action(1)
+		else:
+			player.update_action(0)
+
+		player.move(moving_left, moving_right)
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -74,6 +146,8 @@ while run: #loop for running the game
 				moving_left = True
 			if event.key == pygame.K_d:
 				moving_right = True
+			if event.key == pygame.K_w and player.alive:
+				player.jump = True
 			if event.key == pygame.K_ESCAPE:
 				run = False
 		
