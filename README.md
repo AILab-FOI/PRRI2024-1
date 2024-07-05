@@ -1,5 +1,5 @@
 # PRRI2024-1
-A 2D platformer shooter game developed by a student and the [Artificial Intelligence Laboratory](https://ai.foi.hr/) at the [University of Zagreb Faculty of Organization and Informatics](https://www.foi.unizg.hr/). The game is developed using [null](link na tehnologiju).
+A 2D shooter platformer game developed by a student and the [Artificial Intelligence Laboratory](https://ai.foi.hr/) at the [University of Zagreb Faculty of Organization and Informatics](https://www.foi.unizg.hr/). The game is developed using [null](link na tehnologiju).
 
 # Short intro
 
