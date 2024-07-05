@@ -6,7 +6,7 @@ pygame.init()
 clock = pygame.time.Clock()
 fps = 60
 
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 600
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) #game window size
@@ -25,10 +25,28 @@ class Character(pygame.sprite.Sprite):
 		pygame.sprite.Sprite.__init__(self)
 		self.character_type = character_type
 		self.speed = speed #in pixels
-		self.direction = 1
+		self.direction = 1		
 		self.flip = False
-		playerImg = pygame.image.load(f'../images/{self.character_type}/Idle/0.png') #loading the character image (player, soldier...)
-		self.playerImg = pygame.transform.scale(playerImg, (int(playerImg.get_width() * scale), (int(playerImg.get_height() * scale))))
+		self.animation_list = []
+		self.frame_index = 0
+		self.action = 0 #0 idle, 1 run
+		self.update_time = pygame.time.get_ticks()#to track the time
+		temp_list = []
+		#idle animation
+		for i in range(10):
+			playerImg = pygame.image.load(f'../images/{self.character_type}/Idle/{i}.png') #loading the character image (player, soldier...)
+			playerImg = pygame.transform.scale(playerImg, (int(playerImg.get_width() * scale), (int(playerImg.get_height() * scale))))
+			temp_list.append(playerImg)
+		self.animation_list.append(temp_list)
+		temp_list = []
+		#walking animation
+		for i in range(10):
+			playerImg = pygame.image.load(f'../images/{self.character_type}/Run/{i}.png') #loading the character image (player, soldier...)
+			playerImg = pygame.transform.scale(playerImg, (int(playerImg.get_width() * scale), (int(playerImg.get_height() * scale))))
+			temp_list.append(playerImg)
+		self.animation_list.append(temp_list)
+		
+		self.playerImg = self.animation_list[self.action][self.frame_index]
 		self.rect = self.playerImg.get_rect() #rectangle for player character
 		self.rect.center = (x, y) #position the character on a certain position of the game window
 
@@ -51,6 +69,22 @@ class Character(pygame.sprite.Sprite):
 		self.rect.x += dx
 		self.rect.y += dy
 
+	def update_animation(self):
+		ANIMATION_COOLDOWN = 80 #speed of animation
+		self.playerImg = self.animation_list[self.action][self.frame_index]
+		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
+			self.update_time = pygame.time.get_ticks()
+			self.frame_index += 1
+		#reset back to index 1
+		if self.frame_index >= len(self.animation_list[self.action]):
+			self.frame_index = 0
+
+	def update_action(self, new_action):
+		if new_action != self.action:
+			self.action = new_action
+			self.frame_index = 0
+			self.update_time = pygame.time.get_ticks()
+
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.playerImg,  self.flip, False), self.rect)
 
@@ -63,7 +97,16 @@ while run: #loop for running the game
 	clock.tick(fps)
 	
 	draw_Background()
+
+	player.update_animation()
 	player.draw()
+
+	#change animation if moving left or right
+	if moving_left or moving_right:
+		player.update_action(1)
+	else:
+		player.update_action(0)
+
 	player.move(moving_left, moving_right)
 
 	for event in pygame.event.get():
