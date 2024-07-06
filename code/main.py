@@ -17,6 +17,7 @@ fps = 60
 #game variables
 GRAVITY = 0.70
 TILE_SIZE = 30
+start_game = False
 
 #player variables
 moving_left = False
@@ -24,6 +25,8 @@ moving_right = False
 shoot = False
 
 #images
+#button
+button_image = pygame.image.load('../images/Icons/button.png').convert_alpha()
 #bullet
 bullet_image = pygame.image.load('../images/Player/Weapon/Bullet.png').convert_alpha()
 bullet_image = pygame.transform.scale(bullet_image, (12, 12))
@@ -270,10 +273,45 @@ class HealthBar():
 		pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
 		pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
 
+class Button():
+	def __init__(self,x, y, image, scale):
+		width = image.get_width()
+		height = image.get_height()
+		self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
+		self.rect = self.image.get_rect()
+		self.rect.topleft = (x, y)
+		self.clicked = False
+
+	def draw(self, surface):
+		action = False
+
+		#get mouse position
+		pos = pygame.mouse.get_pos()
+
+		#check mouseover and clicked conditions
+		if self.rect.collidepoint(pos):
+			if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+				action = True
+				self.clicked = True
+
+		if pygame.mouse.get_pressed()[0] == 0:
+			self.clicked = False
+
+		#draw button
+		surface.blit(self.image, (self.rect.x, self.rect.y))
+
+		return action
+
+#buttons
+start_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, button_image, 1)
+exit_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 50, button_image, 1)
+
+
 #sprite groups
 enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
+
 
 #temporary creation of items
 item_box = Items('Health', 300, 270)
@@ -296,38 +334,45 @@ while run: #loop for running the game
 
 	clock.tick(fps)
 	
-	draw_Background()
-	
-	draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
+	if start_game == False:
+		screen.fill(background_color)
+		if start_button.draw(screen):
+			start_game = True
+		if exit_button.draw(screen):
+			run = False
+	else:
+		draw_Background()
+		
+		draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
 
-	player.update()
-	player.draw()
-	health_bar.draw(player.health)
-	draw_information(f'{player.health}', font, WHITE, 75, 10) #show left HP
-	#enemy.update_animation()
-	for enemy in enemy_group:
-		enemy.update()
-		enemy.draw()
-		enemy.ai()
-	#update sprite groups
-	bullet_group.update()
-	bullet_group.draw(screen)
-	item_box_group.update()
-	item_box_group.draw(screen)
+		player.update()
+		player.draw()
+		health_bar.draw(player.health)
+		draw_information(f'{player.health}', font, WHITE, 75, 10) #show left HP
+		#enemy.update_animation()
+		for enemy in enemy_group:
+			enemy.update()
+			enemy.draw()
+			enemy.ai()
+		#update sprite groups
+		bullet_group.update()
+		bullet_group.draw(screen)
+		item_box_group.update()
+		item_box_group.draw(screen)
 
-	if player.alive:
-		#shoot
-		if shoot:
-			player.shooting()
-		if player.in_jump_state:
-			player.update_action(2)
-		#change animation if moving left or right
-		elif moving_left or moving_right:
-			player.update_action(1)
-		else:
-			player.update_action(0)
+		if player.alive:
+			#shoot
+			if shoot:
+				player.shooting()
+			if player.in_jump_state:
+				player.update_action(2)
+			#change animation if moving left or right
+			elif moving_left or moving_right:
+				player.update_action(1)
+			else:
+				player.update_action(0)
 
-		player.move(moving_left, moving_right)
+			player.move(moving_left, moving_right)
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
