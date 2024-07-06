@@ -36,12 +36,13 @@ item_boxes = { #dictionary
 	'Ammo'	: ammo_box_image
 }
 
-font = pygame.font.SysFont('Helvetica', 25)
+font = pygame.font.SysFont('Helvetica', 15)
 
 background_color = (128, 128, 128)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 
 def draw_Background():
 	screen.fill(background_color)
@@ -254,6 +255,20 @@ class Bullet(pygame.sprite.Sprite):
 					enemy.health -= 50
 					self.kill()
 
+class HealthBar():
+	def __init__(self, x, y, health, max_health):
+		self.x = x
+		self.y = y
+		self.health = health
+		self.max_health = max_health
+
+	def draw(self, health):
+		self.health = health
+		#calculate health
+		ratio = self.health / self.max_health
+		pygame.draw.rect(screen, BLACK, (self.x - 2, self.y - 2, 154, 24))
+		pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
+		pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
 
 #sprite groups
 enemy_group = pygame.sprite.Group()
@@ -269,6 +284,7 @@ item_box_group.add(item_box)
 
 #create characters
 player = Character('player', 150, 250, 0.15, 5, 20)
+health_bar = HealthBar(10, 10, player.health, player.health)
 
 enemy = Character('enemy_alien', 1000, 250, 0.20, 2, 20)
 enemy2 = Character('enemy_alien',900, 250, 0.20, 2, 20)
@@ -281,11 +297,13 @@ while run: #loop for running the game
 	clock.tick(fps)
 	
 	draw_Background()
-	draw_information(f'Health: {player.health}', font, WHITE, 10, 15) #show left HP
+	
 	draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
 
 	player.update()
 	player.draw()
+	health_bar.draw(player.health)
+	draw_information(f'{player.health}', font, WHITE, 75, 10) #show left HP
 	#enemy.update_animation()
 	for enemy in enemy_group:
 		enemy.update()
