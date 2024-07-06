@@ -55,6 +55,13 @@ def draw_information(text, font, color, x, y):
 	img = font.render(text, True, color)
 	screen.blit(img, (x, y))
 
+#reset level
+def reset_level():
+	enemy_group.empty()
+	bullet_group.empty()
+	item_box_group.empty()
+	
+
 class Character(pygame.sprite.Sprite):
 	def __init__(self, character_type, x, y, scale, speed, ammo): #constructor	
 		pygame.sprite.Sprite.__init__(self)
@@ -305,6 +312,7 @@ class Button():
 #buttons
 start_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, button_image, 1)
 exit_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 50, button_image, 1)
+restart_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 50, button_image, 1)
 
 
 #sprite groups
@@ -373,6 +381,12 @@ while run: #loop for running the game
 				player.update_action(0)
 
 			player.move(moving_left, moving_right)
+		else:
+			#screen_scroll = 0
+			if restart_button.draw(screen):
+				#bg_scrool = 0
+				pass
+
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
