@@ -1,5 +1,6 @@
 import pygame
 import os
+import random
 
 pygame.init()
 
@@ -15,6 +16,7 @@ fps = 60
 
 #game variables
 GRAVITY = 0.70
+TILE_SIZE = 30
 
 #player variables
 moving_left = False
@@ -28,6 +30,7 @@ bullet_image = pygame.transform.scale(bullet_image, (12, 12))
 
 background_color = (0, 255, 255)
 GREEN = (255, 0, 0)
+RED = (0, 255, 0)
 
 def draw_Background():
 	screen.fill(background_color)
@@ -53,7 +56,11 @@ class Character(pygame.sprite.Sprite):
 		self.frame_index = 0
 		self.action = 0 #0 idle, 1 run
 		self.update_time = pygame.time.get_ticks()#to track the time
-		
+		#AI variables
+		self.moving_counter = 0
+		self.vision = pygame.Rect(0, 0, 150, 20) #how far the enemies can look
+		self.idle = False
+		self.idle_counter = 0
 		
 		animation_types = ['Idle', 'Run', 'Jump', 'Die', 'Hurt', 'Shot'] #idle, walk dead etc
 		for animation in animation_types:
@@ -111,6 +118,9 @@ class Character(pygame.sprite.Sprite):
 		self.check_alive()
 		if self.shooting_cooldown > 0:
 			self.shooting_cooldown -= 1 #cooldown
+		
+		if not self.alive:
+			self.move(False, False)
 
 
 	def shooting(self):
@@ -119,6 +129,36 @@ class Character(pygame.sprite.Sprite):
 			bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery - (-0.2 * self.rect.size[1]), self.direction)
 			bullet_group.add(bullet)
 			self.ammo - 1
+
+	def ai(self):
+		if self.alive and player.alive:
+			if self.idle == False and random.randint(1, 200) == 1:
+				self.update_action(0)
+				self.idle = True
+				self.idle_counter = 50
+			#if the enemy sees player
+			if self.vision.colliderect(player.rect):
+				self.update_action(0) #go idle and shoot
+				self.shooting()
+			else:
+				if self.idle == False:
+					if self.direction == 1:
+						ai_moving_right = True
+					else:
+						ai_moving_right = False
+					ai_moving_left = not ai_moving_right
+					self.move(ai_moving_left, ai_moving_right)
+					self.update_action(1) #when running = run animation
+					self.moving_counter += 1
+					self.vision.center = (self.rect.centerx + 75 * self.direction, self.rect.centery) #so the vision moves with the enemy
+					pygame.draw.rect(screen, RED, self.vision) #visualize enemy vision
+					if self.moving_counter > TILE_SIZE:
+						self.direction *= -1
+						self.moving_counter *= -1
+				else:
+					self.idle_counter -= 1
+					if self.idle_counter <= 0:
+						self.idle = False
 
 	def update_animation(self):
 		ANIMATION_COOLDOWN = 80 #speed of animation
@@ -168,20 +208,27 @@ class Bullet(pygame.sprite.Sprite):
 		#check bullet hit charactersdokill
 		if pygame.sprite.spritecollide(player, bullet_group, False):
 			if player.alive:
-				player.health -= 5
+				player.health -= 25
 				self.kill()
 		
-		if pygame.sprite.spritecollide(enemy, bullet_group, False):
-			if enemy.alive:
-				enemy.health -= 50
-				self.kill()
+		for enemy in enemy_group:
+			if pygame.sprite.spritecollide(enemy, bullet_group, False):
+				if enemy.alive:
+					enemy.health -= 50
+					self.kill()
 
 
 #sprite groups
+enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 
+#create characters
 player = Character('player', 200, 250, 0.15, 5, 20)
-enemy = Character('enemy_alien', 300, 250, 0.20, 5, 20)
+
+enemy = Character('enemy_alien', 600, 250, 0.20, 2, 20)
+enemy2 = Character('enemy_alien', 500, 250, 0.20, 2, 20)
+enemy_group.add(enemy)
+enemy_group.add(enemy2)
 
 run = True
 while run: #loop for running the game
@@ -193,9 +240,10 @@ while run: #loop for running the game
 	player.update()
 	player.draw()
 	#enemy.update_animation()
-	enemy.update()
-	enemy.draw()
-	enemy.move(False, False)
+	for enemy in enemy_group:
+		enemy.update()
+		enemy.draw()
+		enemy.ai()
 	#update sprite groups
 	bullet_group.update()
 	bullet_group.draw(screen)
