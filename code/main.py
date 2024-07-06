@@ -24,17 +24,32 @@ moving_right = False
 shoot = False
 
 #images
-#player bullet
+#bullet
 bullet_image = pygame.image.load('../images/Player/Weapon/Bullet.png').convert_alpha()
 bullet_image = pygame.transform.scale(bullet_image, (12, 12))
+#items
+health_box_image = pygame.image.load('../images/Icons/health.png').convert_alpha()
+ammo_box_image = pygame.image.load('../images/Icons/ammo.png').convert_alpha()
 
-background_color = (0, 255, 255)
-GREEN = (255, 0, 0)
-RED = (0, 255, 0)
+item_boxes = { #dictionary
+	'Health'	: health_box_image,
+	'Ammo'	: ammo_box_image
+}
+
+font = pygame.font.SysFont('Helvetica', 25)
+
+background_color = (128, 128, 128)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+WHITE = (255, 255, 255)
 
 def draw_Background():
 	screen.fill(background_color)
 	pygame.draw.line(screen, GREEN, (0, 300), (SCREEN_WIDTH, 300)) # ------temporary floor
+
+def draw_information(text, font, color, x, y):
+	img = font.render(text, True, color)
+	screen.blit(img, (x, y))
 
 class Character(pygame.sprite.Sprite):
 	def __init__(self, character_type, x, y, scale, speed, ammo): #constructor	
@@ -128,7 +143,7 @@ class Character(pygame.sprite.Sprite):
 			self.shooting_cooldown = 45
 			bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery - (-0.2 * self.rect.size[1]), self.direction)
 			bullet_group.add(bullet)
-			self.ammo - 1
+			self.ammo -= 1
 
 	def ai(self):
 		if self.alive and player.alive:
@@ -188,6 +203,28 @@ class Character(pygame.sprite.Sprite):
 
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.playerImg,  self.flip, False), self.rect)
+		pygame.draw.rect(screen, GREEN, self.rect, 1) #collide box
+
+class Items(pygame.sprite.Sprite):
+	def __init__(self, item_type, x, y):
+		pygame.sprite.Sprite.__init__(self)
+		self.item_type = item_type
+		self.image = item_boxes[self.item_type]
+		self.rect = self.image.get_rect()
+		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+
+	def update(self):
+		#collision
+		if pygame.sprite.collide_rect(self, player): #what happens when collecting certain items
+			if self.item_type == 'Health' and player.health < 100:
+				player.health += 25
+				self.kill()
+				if player.health > player.max_health:
+					player.health = player.max_health
+			if self.item_type == 'Ammo':
+				player.ammo += 10
+				self.kill()
+			#detele item
 
 class Bullet(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction):
@@ -221,12 +258,20 @@ class Bullet(pygame.sprite.Sprite):
 #sprite groups
 enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
+item_box_group = pygame.sprite.Group()
+
+#temporary creation of items
+item_box = Items('Health', 300, 270)
+item_box_group.add(item_box)
+
+item_box = Items('Ammo', 450, 270)
+item_box_group.add(item_box)
 
 #create characters
-player = Character('player', 200, 250, 0.15, 5, 20)
+player = Character('player', 150, 250, 0.15, 5, 20)
 
-enemy = Character('enemy_alien', 600, 250, 0.20, 2, 20)
-enemy2 = Character('enemy_alien', 500, 250, 0.20, 2, 20)
+enemy = Character('enemy_alien', 1000, 250, 0.20, 2, 20)
+enemy2 = Character('enemy_alien',900, 250, 0.20, 2, 20)
 enemy_group.add(enemy)
 enemy_group.add(enemy2)
 
@@ -236,6 +281,8 @@ while run: #loop for running the game
 	clock.tick(fps)
 	
 	draw_Background()
+	draw_information(f'Health: {player.health}', font, WHITE, 10, 15) #show left HP
+	draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
 
 	player.update()
 	player.draw()
@@ -247,6 +294,8 @@ while run: #loop for running the game
 	#update sprite groups
 	bullet_group.update()
 	bullet_group.draw(screen)
+	item_box_group.update()
+	item_box_group.draw(screen)
 
 	if player.alive:
 		#shoot
