@@ -17,6 +17,7 @@ fps = 60
 
 #game variables
 GRAVITY = 0.70
+
 ROWS = 20
 COLUMNS = 30
 TILE_SIZE = SCREEN_HEIGHT // ROWS
@@ -368,6 +369,7 @@ for row in range(ROWS):
 	r = [-1] * COLUMNS #row with 150 negative columns, -1 means a empty tile
 	world_data.append(r)
 #load level data
+
 with open(f'../levels/level{level}.csv', newline='') as csvfile:
 	reader = csv.reader(csvfile, delimiter=',')
 	for x, row in enumerate(reader):
@@ -376,6 +378,7 @@ with open(f'../levels/level{level}.csv', newline='') as csvfile:
 
 level = Level()
 level.process_data(world_data)
+
 
 run = True
 while run: #loop for running the game
