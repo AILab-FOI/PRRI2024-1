@@ -5,8 +5,8 @@ import csv
 
 pygame.init()
 
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 960
+SCREEN_HEIGHT = 640
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) #game window size
 pygame.display.set_caption('Igrica')
@@ -17,10 +17,10 @@ fps = 60
 
 #game variables
 GRAVITY = 0.70
-ROWS = 16
-COLUMNS = 150
+ROWS = 20
+COLUMNS = 30
 TILE_SIZE = SCREEN_HEIGHT // ROWS
-TILE_TYPES = 21 #number of different tiles ------------------------------- CHANGE
+TILE_TYPES = 4 #number of different tiles ------------------------------- CHANGE
 level = 1 #level 1, level 2...
 
 
@@ -30,6 +30,13 @@ moving_right = False
 shoot = False
 
 #images
+#tiles in list
+tile_image_list = []
+for x in range(TILE_TYPES):
+	image = pygame.image.load(f'../images/Background/{x}.png')
+	image = pygame.transform.scale(image, (TILE_SIZE, TILE_SIZE))
+	tile_image_list.append(image)
+
 #bullet
 bullet_image = pygame.image.load('../images/Player/Weapon/Bullet.png').convert_alpha()
 bullet_image = pygame.transform.scale(bullet_image, (12, 12))
@@ -57,6 +64,38 @@ def draw_Background():
 def draw_information(text, font, color, x, y):
 	img = font.render(text, True, color)
 	screen.blit(img, (x, y))
+
+class Level():
+	def __init__(self):
+		self.obstacle_list = []
+
+	def process_data(self, data):
+		for y, row in enumerate(data):
+			for x, tile in enumerate(row):
+				if tile >= 0:
+					image = tile_image_list[tile]
+					image_rect = image.get_rect()
+					image_rect.x = x * TILE_SIZE
+					image_rect.y = y * TILE_SIZE
+					tile_data = (image, image_rect)
+					if tile >= 0 and tile <= 2: #if its dirt or a box
+						self.obstacle_list.append(tile_data)
+					elif tile == 3: #if its water
+						water = Water(image, x * TILE_SIZE, y * TILE_SIZE)
+						water_group.add(water)
+					else: #in the future if there'll be more tiles
+						pass
+	
+	def draw(self):
+		for tile in self.obstacle_list:
+			screen.blit(tile[0], tile[1])
+
+class Water(pygame.sprite.Sprite):
+	def __init__(self, img, x, y):
+		pygame.sprite.Sprite.__init__(self)
+		self.image = img
+		self.rect = self.image.get_rect()
+		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height())) 
 
 class Character(pygame.sprite.Sprite):
 	def __init__(self, character_type, x, y, scale, speed, ammo): #constructor	
@@ -280,6 +319,7 @@ class HealthBar():
 enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
+water_group = pygame.sprite.Group()
 
 #temporary creation of items
 item_box = Items('Health', 300, 270)
@@ -289,11 +329,11 @@ item_box = Items('Ammo', 450, 270)
 item_box_group.add(item_box)
 
 #create characters
-player = Character('player', 150, 250, 0.15, 5, 20)
+player = Character('player', 50, 250, 0.10, 5, 20)
 health_bar = HealthBar(10, 10, player.health, player.health)
 
-enemy = Character('enemy_alien', 1000, 250, 0.20, 2, 20)
-enemy2 = Character('enemy_alien',900, 250, 0.20, 2, 20)
+enemy = Character('enemy_alien', 600, 250, 0.10, 2, 20)
+enemy2 = Character('enemy_alien', 700, 250, 0.10, 2, 20)
 enemy_group.add(enemy)
 enemy_group.add(enemy2)
 
@@ -303,7 +343,14 @@ for row in range(ROWS):
 	r = [-1] * COLUMNS #row with 150 negative columns, -1 means a empty tile
 	world_data.append(r)
 #load level data
-with open('level1_data,csv')
+with open(f'../levels/level{level}.csv', newline='') as csvfile:
+	reader = csv.reader(csvfile, delimiter=',')
+	for x, row in enumerate(reader):
+		for y, tile in enumerate(row):
+			world_data[x][y] = int(tile)
+
+level = Level()
+level.process_data(world_data)
 
 run = True
 while run: #loop for running the game
@@ -311,7 +358,8 @@ while run: #loop for running the game
 	clock.tick(fps)
 	
 	draw_Background()
-	
+	level.draw()
+
 	draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
 
 	player.update()
@@ -328,6 +376,8 @@ while run: #loop for running the game
 	bullet_group.draw(screen)
 	item_box_group.update()
 	item_box_group.draw(screen)
+	water_group.update()
+	water_group.draw(screen)
 
 	if player.alive:
 		#shoot
