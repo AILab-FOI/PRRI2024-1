@@ -24,6 +24,8 @@ TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 4 #number of different tiles ------------------------------- CHANGE
 level = 1 #level 1, level 2...
 
+start_game = False
+
 
 #player variables
 moving_left = False
@@ -31,12 +33,16 @@ moving_right = False
 shoot = False
 
 #images
+
 #tiles in list
 tile_image_list = []
 for x in range(TILE_TYPES):
 	image = pygame.image.load(f'../images/Background/{x}.png')
 	image = pygame.transform.scale(image, (TILE_SIZE, TILE_SIZE))
 	tile_image_list.append(image)
+
+#button
+button_image = pygame.image.load('../images/Icons/button.png').convert_alpha()
 
 #bullet
 bullet_image = pygame.image.load('../images/Player/Weapon/Bullet.png').convert_alpha()
@@ -97,6 +103,13 @@ class Water(pygame.sprite.Sprite):
 		self.image = img
 		self.rect = self.image.get_rect()
 		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height())) 
+
+#reset level
+def reset_level():
+	enemy_group.empty()
+	bullet_group.empty()
+	item_box_group.empty()
+	
 
 class Character(pygame.sprite.Sprite):
 	def __init__(self, character_type, x, y, scale, speed, ammo): #constructor	
@@ -341,11 +354,47 @@ class HealthBar():
 		pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
 		pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
 
+class Button():
+	def __init__(self,x, y, image, scale):
+		width = image.get_width()
+		height = image.get_height()
+		self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
+		self.rect = self.image.get_rect()
+		self.rect.topleft = (x, y)
+		self.clicked = False
+
+	def draw(self, surface):
+		action = False
+
+		#get mouse position
+		pos = pygame.mouse.get_pos()
+
+		#check mouseover and clicked conditions
+		if self.rect.collidepoint(pos):
+			if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+				action = True
+				self.clicked = True
+
+		if pygame.mouse.get_pressed()[0] == 0:
+			self.clicked = False
+
+		#draw button
+		surface.blit(self.image, (self.rect.x, self.rect.y))
+
+		return action
+
+#buttons
+start_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, button_image, 1)
+exit_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 50, button_image, 1)
+restart_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 50, button_image, 1)
+
+
 #sprite groups
 enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
 water_group = pygame.sprite.Group()
+
 
 #temporary creation of items
 item_box = Items('Health', 300, 270)
@@ -385,41 +434,51 @@ while run: #loop for running the game
 
 	clock.tick(fps)
 	
-	draw_Background()
-	level.draw()
+if start_game == False:
+		screen.fill(background_color)
+		if start_button.draw(screen):
+			start_game = True
+		if exit_button.draw(screen):
+			run = False
+	else:
+		draw_Background()
+		
+		draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
 
-	draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
+		player.update()
+		player.draw()
+		health_bar.draw(player.health)
+		draw_information(f'{player.health}', font, WHITE, 75, 10) #show left HP
+		#enemy.update_animation()
+		for enemy in enemy_group:
+			enemy.update()
+			enemy.draw()
+			enemy.ai()
+		#update sprite groups
+		bullet_group.update()
+		bullet_group.draw(screen)
+		item_box_group.update()
+		item_box_group.draw(screen)
 
-	player.update()
-	player.draw()
-	health_bar.draw(player.health)
-	draw_information(f'{player.health}', font, WHITE, 75, 10) #show left HP
-	#enemy.update_animation()
-	for enemy in enemy_group:
-		enemy.update()
-		enemy.draw()
-		enemy.ai()
-	#update sprite groups
-	bullet_group.update()
-	bullet_group.draw(screen)
-	item_box_group.update()
-	item_box_group.draw(screen)
-	water_group.update()
-	water_group.draw(screen)
+		if player.alive:
+			#shoot
+			if shoot:
+				player.shooting()
+			if player.in_jump_state:
+				player.update_action(2)
+			#change animation if moving left or right
+			elif moving_left or moving_right:
+				player.update_action(1)
+			else:
+				player.update_action(0)
 
-	if player.alive:
-		#shoot
-		if shoot:
-			player.shooting()
-		if player.in_jump_state:
-			player.update_action(2)
-		#change animation if moving left or right
-		elif moving_left or moving_right:
-			player.update_action(1)
+			player.move(moving_left, moving_right)
 		else:
-			player.update_action(0)
+			#screen_scroll = 0
+			if restart_button.draw(screen):
+				#bg_scrool = 0
+				pass
 
-		player.move(moving_left, moving_right)
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
