@@ -250,7 +250,7 @@ class Character(pygame.sprite.Sprite):
 					#pygame.draw.rect(screen, RED, self.vision) #visualize enemy vision
 					if self.moving_counter > TILE_SIZE:
 						self.direction *= -1
-						self.moving_counter *= -1
+						self.moving_counter = 0
 				else:
 					self.idle_counter -= 1
 					if self.idle_counter <= 0:
@@ -434,7 +434,7 @@ while run: #loop for running the game
 
 	clock.tick(fps)
 	
-if start_game == False:
+	if start_game == False:
 		screen.fill(background_color)
 		if start_button.draw(screen):
 			start_game = True
@@ -442,7 +442,7 @@ if start_game == False:
 			run = False
 	else:
 		draw_Background()
-		
+		level.draw()
 		draw_information(f'Ammo: {player.ammo}', font, WHITE, 10, 40) #show left ammo
 
 		player.update()
@@ -459,7 +459,9 @@ if start_game == False:
 		bullet_group.draw(screen)
 		item_box_group.update()
 		item_box_group.draw(screen)
-
+		water_group.update()
+		water_group.draw(screen)
+		
 		if player.alive:
 			#shoot
 			if shoot:
@@ -471,7 +473,6 @@ if start_game == False:
 				player.update_action(1)
 			else:
 				player.update_action(0)
-
 			player.move(moving_left, moving_right)
 		else:
 			#screen_scroll = 0
