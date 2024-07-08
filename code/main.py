@@ -39,7 +39,7 @@ for x in range(TILE_TYPES):
 
 #bullet
 bullet_image = pygame.image.load('../images/Player/Weapon/Bullet.png').convert_alpha()
-bullet_image = pygame.transform.scale(bullet_image, (12, 12))
+bullet_image = pygame.transform.scale(bullet_image, (8, 8))
 #items
 health_box_image = pygame.image.load('../images/Icons/health.png').convert_alpha()
 ammo_box_image = pygame.image.load('../images/Icons/ammo.png').convert_alpha()
@@ -59,7 +59,7 @@ BLACK = (0, 0, 0)
 
 def draw_Background():
 	screen.fill(background_color)
-	pygame.draw.line(screen, GREEN, (0, 300), (SCREEN_WIDTH, 300)) # ------temporary floor
+	#pygame.draw.line(screen, GREEN, (0, 300), (SCREEN_WIDTH, 300)) # ------temporary floor
 
 def draw_information(text, font, color, x, y):
 	img = font.render(text, True, color)
@@ -130,20 +130,24 @@ class Character(pygame.sprite.Sprite):
 			number_of_files = len(os.listdir(f'../images/{self.character_type}/{animation}'))
 
 			for i in range(number_of_files):
-				playerImg = pygame.image.load(f'../images/{self.character_type}/{animation}/{i}.png').convert_alpha() #loading the character image (player, soldier...)
-				playerImg = pygame.transform.scale(playerImg, (int(playerImg.get_width() * scale), (int(playerImg.get_height() * scale))))
-				temp_list.append(playerImg)
+				character_image = pygame.image.load(f'../images/{self.character_type}/{animation}/{i}.png').convert_alpha() #loading the character image (player, soldier...)
+				character_image = pygame.transform.scale(character_image, (int(character_image.get_width() * scale), (int(character_image.get_height() * scale))))
+				temp_list.append(character_image)
 			self.animation_list.append(temp_list)
 		
-		self.playerImg = self.animation_list[self.action][self.frame_index]
-		self.rect = self.playerImg.get_rect() #rectangle for player character
+		self.character_image = self.animation_list[self.action][self.frame_index]
+		self.rect = self.character_image.get_rect() #rectangle for player character
 		self.rect.center = (x, y) #position the character on a certain position of the game window
+		self.width = self.character_image.get_width() - 5
+		self.height = self.character_image.get_height() - 1 	
+		
+
 
 	def move(self, moving_left, moving_right):
-		dx = 0 #change in the x position
-		dy = 0 #change in the y position
+		dx = 0  # change in the x position
+		dy = 0  # change in the y position
 		
-		#move 
+		# move 
 		if moving_left:
 			dx = -self.speed
 			self.flip = True
@@ -154,26 +158,43 @@ class Character(pygame.sprite.Sprite):
 			self.flip = False
 			self.direction = 1
 		
-		if self.jump == True and self.in_jump_state == False:
-			self.velocity_y = -11 #how high player jumps
+		if self.jump and not self.in_jump_state:
+			self.velocity_y = -11  # how high player jumps
 			self.jump = False
 			self.in_jump_state = True
 		
-		#gravity
+		# gravity
 		self.velocity_y += GRAVITY
 		if self.velocity_y > 10:
 			self.velocity_y = 10
 		dy += self.velocity_y
 
-		#check collision with floor --- temporary
-		if self.rect.bottom + dy > 300:
-			dy = 300 - self.rect.bottom
-			self.in_jump_state = False
+		# check collision
+		for tile in level.obstacle_list:
+			# collision in x direction
+			if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
+				dx = 0
+				#turn the ai around when hitting a wall
+				if self.character_type == 'enemy_alien':
+					self.direction *= -1
+					self.moving_counter = 0
+			# collision in y direction
+			if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
+				# if jumping
+				if self.velocity_y < 0:  # it means the player is moving up
+					self.velocity_y = 0
+					dy = tile[1].bottom - self.rect.top  # the player jumps so he hits his head and goes down
+				elif self.velocity_y >= 0:  # the player is falling
+					self.velocity_y = 0
+					self.in_jump_state = False
+					dy = tile[1].top - self.rect.bottom  # the player falls and hits the ground
 
-		#change player position
+		# change player position
 		self.rect.x += dx
 		self.rect.y += dy
 
+
+		
 	def update(self):
 		self.update_animation()
 		self.check_alive()
@@ -212,7 +233,7 @@ class Character(pygame.sprite.Sprite):
 					self.update_action(1) #when running = run animation
 					self.moving_counter += 1
 					self.vision.center = (self.rect.centerx + 75 * self.direction, self.rect.centery) #so the vision moves with the enemy
-					pygame.draw.rect(screen, RED, self.vision) #visualize enemy vision
+					#pygame.draw.rect(screen, RED, self.vision) #visualize enemy vision
 					if self.moving_counter > TILE_SIZE:
 						self.direction *= -1
 						self.moving_counter *= -1
@@ -223,7 +244,7 @@ class Character(pygame.sprite.Sprite):
 
 	def update_animation(self):
 		ANIMATION_COOLDOWN = 80 #speed of animation
-		self.playerImg = self.animation_list[self.action][self.frame_index]
+		self.character_image = self.animation_list[self.action][self.frame_index]
 		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
 			self.update_time = pygame.time.get_ticks()
 			self.frame_index += 1
@@ -248,8 +269,8 @@ class Character(pygame.sprite.Sprite):
 			self.update_action(3)   
 
 	def draw(self):
-		screen.blit(pygame.transform.flip(self.playerImg,  self.flip, False), self.rect)
-		pygame.draw.rect(screen, GREEN, self.rect, 1) #collide box
+		screen.blit(pygame.transform.flip(self.character_image,  self.flip, False), self.rect)
+		#pygame.draw.rect(screen, GREEN, self.rect, 1) #collide box
 
 class Items(pygame.sprite.Sprite):
 	def __init__(self, item_type, x, y):
@@ -287,7 +308,11 @@ class Bullet(pygame.sprite.Sprite):
 		#bullet out of bounds (screen)
 		if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
 			self.kill
-		
+
+		#collision with world
+		for tile in level.obstacle_list:
+			if tile[1].colliderect(self.rect):
+				self.kill()	
 		#check bullet hit charactersdokill
 		if pygame.sprite.spritecollide(player, bullet_group, False):
 			if player.alive:
@@ -329,7 +354,7 @@ item_box = Items('Ammo', 450, 270)
 item_box_group.add(item_box)
 
 #create characters
-player = Character('player', 50, 250, 0.10, 5, 20)
+player = Character('player', 50, 400, 0.10, 5, 20)
 health_bar = HealthBar(10, 10, player.health, player.health)
 
 enemy = Character('enemy_alien', 600, 250, 0.10, 2, 20)
