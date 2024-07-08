@@ -1,6 +1,7 @@
 import pygame
-import os
 import random
+import os
+import csv
 
 pygame.init()
 
@@ -16,7 +17,12 @@ fps = 60
 
 #game variables
 GRAVITY = 0.70
-TILE_SIZE = 30
+ROWS = 16
+COLUMNS = 150
+TILE_SIZE = SCREEN_HEIGHT // ROWS
+TILE_TYPES = 21 #number of different tiles ------------------------------- CHANGE
+level = 1 #level 1, level 2...
+
 
 #player variables
 moving_left = False
@@ -200,7 +206,7 @@ class Character(pygame.sprite.Sprite):
 			self.health = 0
 			self.speed = 0
 			self.alive = False
-			self.update_action(3)
+			self.update_action(3)   
 
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.playerImg,  self.flip, False), self.rect)
@@ -290,6 +296,14 @@ enemy = Character('enemy_alien', 1000, 250, 0.20, 2, 20)
 enemy2 = Character('enemy_alien',900, 250, 0.20, 2, 20)
 enemy_group.add(enemy)
 enemy_group.add(enemy2)
+
+#CREATE TILE LIST
+world_data = []
+for row in range(ROWS):
+	r = [-1] * COLUMNS #row with 150 negative columns, -1 means a empty tile
+	world_data.append(r)
+#load level data
+with open('level1_data,csv')
 
 run = True
 while run: #loop for running the game
