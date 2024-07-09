@@ -1,8 +1,10 @@
 import pygame
+from pygame import mixer
 import random
 import os
 import csv
 
+mixer.init()
 pygame.init()
 
 SCREEN_WIDTH = 960
@@ -16,7 +18,7 @@ clock = pygame.time.Clock()
 fps = 60
 
 #game variables
-GRAVITY = 0.70
+GRAVITY = 0.75
 
 ROWS = 20
 COLUMNS = 30
@@ -31,6 +33,16 @@ start_game = False
 moving_left = False
 moving_right = False
 shoot = False
+
+#music and sounds
+pygame.mixer.music.load('../audio/title.mp3')
+pygame.mixer.music.set_volume(0.3)
+pygame.mixer.music.play(0, 0.0,0)
+
+jump_fx = pygame.mixer.Sound('../audio/jump.wav')
+jump_fx.set_volume(0.25)
+shot_fx = pygame.mixer.Sound('../audio/gun_fire.wav')
+shot_fx.set_volume(0.25)
 
 #images
 
@@ -245,6 +257,7 @@ class Character(pygame.sprite.Sprite):
 			bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery - (-0.2 * self.rect.size[1]), self.direction)
 			bullet_group.add(bullet)
 			self.ammo -= 1
+			shot_fx.play()
 
 	def ai(self):
 		if self.alive and player.alive:
@@ -266,7 +279,7 @@ class Character(pygame.sprite.Sprite):
 					self.move(ai_moving_left, ai_moving_right)
 					self.update_action(1) #when running = run animation
 					self.moving_counter += 1
-					self.vision.center = (self.rect.centerx + 75 * self.direction, self.rect.centery) #so the vision moves with the enemy
+					self.vision.center = (self.rect.centerx + 85 * self.direction, self.rect.centery) #so the vision moves with the enemy
 					#pygame.draw.rect(screen, RED, self.vision) #visualize enemy vision
 					if self.moving_counter > TILE_SIZE:
 						self.direction *= -1
@@ -402,6 +415,23 @@ class Button():
 
 		return action
 
+class ScreenFade():
+	def __init__(self, direction, color, speed):
+		self.direction = direction
+		self.color = color
+		self.speed = speed
+		self.fade_counter = 0
+
+	def fade(self):
+		fade_complete = False
+		self.fade_counter += self.speed
+		pygame.draw.rect(screen, self.color, (0, 0, SCREEN_WIDTH, 0 + self.fade_counter))
+		if self.fade_counter >= SCREEN_WIDTH:
+			fade_complete = True
+		return fade_complete
+
+death_fade = ScreenFade(2, RED, 4)
+
 #buttons
 start_button = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, play_button_image, 1)
 exit_button = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50, exit_button_image, 1)
@@ -416,20 +446,24 @@ water_group = pygame.sprite.Group()
 
 
 #temporary creation of items
-item_box = Items('Health', 300, 270)
+item_box = Items('Health', 200, 200)
 item_box_group.add(item_box)
 
-item_box = Items('Ammo', 450, 270)
+item_box = Items('Ammo', 450, 500)
 item_box_group.add(item_box)
 
 #create characters
-player = Character('player', 50, 400, 0.10, 5, 20)
+player = Character('player', 100, 600, 0.10, 3, 5)
 health_bar = HealthBar(10, 10, player.health, player.health)
 
-enemy = Character('enemy_alien', 600, 250, 0.10, 2, 20)
-enemy2 = Character('enemy_alien', 700, 250, 0.10, 2, 20)
+enemy = Character('enemy_alien', 600, 600, 0.10, 1, 30)
+enemy2 = Character('enemy_alien', 600, 250, 0.10, 1, 30)
+enemy3 = Character('enemy_alien', 700, 150, 0.10, 1, 30)
+enemy4 = Character('enemy_alien', 300, 150, 0.10, 1, 30)
 enemy_group.add(enemy)
 enemy_group.add(enemy2)
+enemy_group.add(enemy3)
+enemy_group.add(enemy4)
 
 #CREATE TILE LIST
 world_data = []
@@ -496,19 +530,20 @@ while run: #loop for running the game
 			#if level_complete:
 				#level += 1
 		else:
-			if replay_button.draw(screen):
-				pass
-				#not working
-				"""world_data = reset_level()
-				#load level data
-				with open(f'../levels/level{level}.csv', newline='') as csvfile:
-					reader = csv.reader(csvfile, delimiter=',')
-					for x, row in enumerate(reader):
-						for y, tile in enumerate(row):
-							world_data[x][y] = int(tile)
+			if death_fade.fade():
+				if replay_button.draw(screen):
+					pass
+					#not working
+					"""world_data = reset_level()
+					#load level data
+					with open(f'../levels/level{level}.csv', newline='') as csvfile:
+						reader = csv.reader(csvfile, delimiter=',')
+						for x, row in enumerate(reader):
+							for y, tile in enumerate(row):
+								world_data[x][y] = int(tile)
 
-					level = Level()
-					level.process_data(world_data)"""
+						level = Level()
+						level.process_data(world_data)"""
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -520,6 +555,7 @@ while run: #loop for running the game
 				moving_right = True
 			if event.key == pygame.K_w and player.alive:
 				player.jump = True
+				jump_fx.play()
 			if event.key == pygame.K_SPACE:
 				shoot = True
 			if event.key == pygame.K_ESCAPE:
