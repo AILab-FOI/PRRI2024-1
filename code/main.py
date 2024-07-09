@@ -21,7 +21,7 @@ GRAVITY = 0.70
 ROWS = 20
 COLUMNS = 30
 TILE_SIZE = SCREEN_HEIGHT // ROWS
-TILE_TYPES = 4 #number of different tiles ------------------------------- CHANGE
+TILE_TYPES = 5 #number of different tiles ------------------------------- CHANGE
 level = 1 #level 1, level 2...
 
 start_game = False
@@ -42,7 +42,9 @@ for x in range(TILE_TYPES):
 	tile_image_list.append(image)
 
 #button
-button_image = pygame.image.load('../images/Icons/button.png').convert_alpha()
+play_button_image = pygame.image.load('../images/Buttons/play.png').convert_alpha()
+exit_button_image = pygame.image.load('../images/Buttons/exit.png').convert_alpha()
+replay_button_image = pygame.image.load('../images/Buttons/replay.png').convert_alpha()
 
 #bullet
 bullet_image = pygame.image.load('../images/Player/Weapon/Bullet.png').convert_alpha()
@@ -109,7 +111,14 @@ def reset_level():
 	enemy_group.empty()
 	bullet_group.empty()
 	item_box_group.empty()
-	
+	water_group.empty()
+
+	data = []
+	for row in range(ROWS):
+		r = [-1] * COLUMNS #row with 150 negative columns, -1 means a empty tile
+		data.append(r)
+	#load level data
+	return data
 
 class Character(pygame.sprite.Sprite):
 	def __init__(self, character_type, x, y, scale, speed, ammo): #constructor	
@@ -203,6 +212,17 @@ class Character(pygame.sprite.Sprite):
 					self.in_jump_state = False
 					dy = tile[1].top - self.rect.bottom  # the player falls and hits the ground
 
+
+		#collision with water
+		if pygame.sprite.spritecollide(self, water_group, False): #false is because we dont want the sprite to delete when coliding
+			self.health = 0
+			self.kill()
+
+		#collision for next level
+		#level_complete = False
+		#if pygame.sprite.spritecollide(self, uexit_grop, False):
+			#level_complete = True
+		
 		# change player position
 		self.rect.x += dx
 		self.rect.y += dy
@@ -365,7 +385,6 @@ class Button():
 
 	def draw(self, surface):
 		action = False
-
 		#get mouse position
 		pos = pygame.mouse.get_pos()
 
@@ -384,9 +403,9 @@ class Button():
 		return action
 
 #buttons
-start_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, button_image, 1)
-exit_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 50, button_image, 1)
-restart_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 50, button_image, 1)
+start_button = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, play_button_image, 1)
+exit_button = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50, exit_button_image, 1)
+replay_button = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, replay_button_image, 1)
 
 
 #sprite groups
@@ -417,8 +436,8 @@ world_data = []
 for row in range(ROWS):
 	r = [-1] * COLUMNS #row with 150 negative columns, -1 means a empty tile
 	world_data.append(r)
-#load level data
 
+#load level data
 with open(f'../levels/level{level}.csv', newline='') as csvfile:
 	reader = csv.reader(csvfile, delimiter=',')
 	for x, row in enumerate(reader):
@@ -474,12 +493,22 @@ while run: #loop for running the game
 			else:
 				player.update_action(0)
 			player.move(moving_left, moving_right)
+			#if level_complete:
+				#level += 1
 		else:
-			#screen_scroll = 0
-			if restart_button.draw(screen):
-				#bg_scrool = 0
+			if replay_button.draw(screen):
 				pass
+				#not working
+				"""world_data = reset_level()
+				#load level data
+				with open(f'../levels/level{level}.csv', newline='') as csvfile:
+					reader = csv.reader(csvfile, delimiter=',')
+					for x, row in enumerate(reader):
+						for y, tile in enumerate(row):
+							world_data[x][y] = int(tile)
 
+					level = Level()
+					level.process_data(world_data)"""
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -495,7 +524,8 @@ while run: #loop for running the game
 				shoot = True
 			if event.key == pygame.K_ESCAPE:
 				run = False
-		
+			if event.key == pygame.K_RETURN:
+				start_game = True
 		if event.type == pygame.KEYUP:
 			if event.key == pygame.K_a:
 				moving_left = False
