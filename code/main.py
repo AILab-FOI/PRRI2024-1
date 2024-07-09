@@ -133,191 +133,166 @@ def reset_level():
 	return data
 
 class Character(pygame.sprite.Sprite):
-	def __init__(self, character_type, x, y, scale, speed, ammo): #constructor	
-		pygame.sprite.Sprite.__init__(self)
-		self.alive = True
-		self.character_type = character_type
-		self.speed = speed #in pixels
-		self.ammo = ammo #gun amunition
-		self.start_ammo = ammo
-		self.shooting_cooldown = 0
-		self.health = 100 #health = health for different enemy health
-		self.max_health = self.health
-		self.direction = 1
-		self.velocity_y = 0
-		self.jump = False
-		self.in_jump_state = True
-		self.flip = False
-		self.animation_list = []
-		self.frame_index = 0
-		self.action = 0 #0 idle, 1 run
-		self.update_time = pygame.time.get_ticks()#to track the time
-		#AI variables
-		self.moving_counter = 0
-		self.vision = pygame.Rect(0, 0, 150, 20) #how far the enemies can look
-		self.idle = False
-		self.idle_counter = 0
-		
-		animation_types = ['Idle', 'Run', 'Jump', 'Die', 'Hurt', 'Shot'] #idle, walk dead etc
-		for animation in animation_types:
-			temp_list = []
-			#check number of items in folder
-			number_of_files = len(os.listdir(f'../images/{self.character_type}/{animation}'))
+    def __init__(self, character_type, x, y, scale, speed, ammo):
+        pygame.sprite.Sprite.__init__(self)
+        self.alive = True
+        self.character_type = character_type
+        self.speed = speed
+        self.ammo = ammo
+        self.start_ammo = ammo
+        self.shooting_cooldown = 0
+        self.health = 100
+        self.max_health = self.health
+        self.direction = 1
+        self.velocity_y = 0
+        self.jump = False
+        self.in_jump_state = True
+        self.flip = False
+        self.animation_list = []
+        self.frame_index = 0
+        self.action = 0
+        self.update_time = pygame.time.get_ticks()
+        self.moving_counter = 0
+        self.vision = pygame.Rect(0, 0, 150, 20)
+        self.idle = False
+        self.idle_counter = 0
+        
+        animation_types = ['Idle', 'Run', 'Jump', 'Die', 'Hurt', 'Shot']
+        for animation in animation_types:
+            temp_list = []
+            number_of_files = len(os.listdir(f'../images/{self.character_type}/{animation}'))
+            for i in range(number_of_files):
+                character_image = pygame.image.load(f'../images/{self.character_type}/{animation}/{i}.png').convert_alpha()
+                character_image = pygame.transform.scale(character_image, (int(character_image.get_width() * scale), (int(character_image.get_height() * scale))))
+                temp_list.append(character_image)
+            self.animation_list.append(temp_list)
+        
+        self.character_image = self.animation_list[self.action][self.frame_index]
+        self.rect = self.character_image.get_rect()
+        self.rect.center = (x, y)
+        self.width = self.character_image.get_width() - 5
+        self.height = self.character_image.get_height() - 1
 
-			for i in range(number_of_files):
-				character_image = pygame.image.load(f'../images/{self.character_type}/{animation}/{i}.png').convert_alpha() #loading the character image (player, soldier...)
-				character_image = pygame.transform.scale(character_image, (int(character_image.get_width() * scale), (int(character_image.get_height() * scale))))
-				temp_list.append(character_image)
-			self.animation_list.append(temp_list)
-		
-		self.character_image = self.animation_list[self.action][self.frame_index]
-		self.rect = self.character_image.get_rect() #rectangle for player character
-		self.rect.center = (x, y) #position the character on a certain position of the game window
-		self.width = self.character_image.get_width() - 5
-		self.height = self.character_image.get_height() - 1 	
-		
+    def move(self, moving_left, moving_right):
+        dx = 0
+        dy = 0
+        
+        if moving_left:
+            dx = -self.speed
+            self.flip = True
+            self.direction = -1
+        
+        if moving_right:
+            dx = self.speed
+            self.flip = False
+            self.direction = 1
+        
+        if self.jump and not self.in_jump_state:
+            self.velocity_y = -11
+            self.jump = False
+            self.in_jump_state = True
+        
+        self.velocity_y += GRAVITY
+        if self.velocity_y > 10:
+            self.velocity_y = 10
+        dy += self.velocity_y
 
+        for tile in level.obstacle_list:
+            if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
+                dx = 0
+                if self.character_type == 'enemy_alien':
+                    self.direction *= -1
+                    self.moving_counter = 0
+            if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
+                if self.velocity_y < 0:
+                    self.velocity_y = 0
+                    dy = tile[1].bottom - self.rect.top
+                elif self.velocity_y >= 0:
+                    self.velocity_y = 0
+                    self.in_jump_state = False
+                    dy = tile[1].top - self.rect.bottom
 
-	def move(self, moving_left, moving_right):
-		dx = 0  # change in the x position
-		dy = 0  # change in the y position
-		
-		# move 
-		if moving_left:
-			dx = -self.speed
-			self.flip = True
-			self.direction = -1
-		
-		if moving_right:
-			dx = self.speed
-			self.flip = False
-			self.direction = 1
-		
-		if self.jump and not self.in_jump_state:
-			self.velocity_y = -11  # how high player jumps
-			self.jump = False
-			self.in_jump_state = True
-		
-		# gravity
-		self.velocity_y += GRAVITY
-		if self.velocity_y > 10:
-			self.velocity_y = 10
-		dy += self.velocity_y
+        if pygame.sprite.spritecollide(self, water_group, False):
+            self.health = 0
+            self.alive = False
+            self.update_action(3)
 
-		# check collision
-		for tile in level.obstacle_list:
-			# collision in x direction
-			if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
-				dx = 0
-				#turn the ai around when hitting a wall
-				if self.character_type == 'enemy_alien':
-					self.direction *= -1
-					self.moving_counter = 0
-			# collision in y direction
-			if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
-				# if jumping
-				if self.velocity_y < 0:  # it means the player is moving up
-					self.velocity_y = 0
-					dy = tile[1].bottom - self.rect.top  # the player jumps so he hits his head and goes down
-				elif self.velocity_y >= 0:  # the player is falling
-					self.velocity_y = 0
-					self.in_jump_state = False
-					dy = tile[1].top - self.rect.bottom  # the player falls and hits the ground
+        self.rect.x += dx
+        self.rect.y += dy
 
+    def update(self):
+        self.update_animation()
+        self.check_alive()
+        if self.shooting_cooldown > 0:
+            self.shooting_cooldown -= 1
+        
+        if not self.alive:
+            self.move(False, False)
 
-		#collision with water
-		if pygame.sprite.spritecollide(self, water_group, False): #false is because we dont want the sprite to delete when coliding
-			self.health = 0
-			self.kill()
+    def shooting(self):
+        if self.shooting_cooldown == 0 and self.ammo > 0:
+            self.shooting_cooldown = 45
+            bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery - (-0.2 * self.rect.size[1]), self.direction)
+            bullet_group.add(bullet)
+            self.ammo -= 1
+            shot_fx.play()
 
-		#collision for next level
-		#level_complete = False
-		#if pygame.sprite.spritecollide(self, uexit_grop, False):
-			#level_complete = True
-		
-		# change player position
-		self.rect.x += dx
-		self.rect.y += dy
+    def ai(self):
+        if self.alive and player.alive:
+            if self.idle == False and random.randint(1, 200) == 1:
+                self.update_action(0)
+                self.idle = True
+                self.idle_counter = 50
+            if self.vision.colliderect(player.rect):
+                self.update_action(0)
+                self.shooting()
+            else:
+                if self.idle == False:
+                    if self.direction == 1:
+                        ai_moving_right = True
+                    else:
+                        ai_moving_right = False
+                    ai_moving_left = not ai_moving_right
+                    self.move(ai_moving_left, ai_moving_right)
+                    self.update_action(1)
+                    self.moving_counter += 1
+                    self.vision.center = (self.rect.centerx + 85 * self.direction, self.rect.centery)
+                    if self.moving_counter > TILE_SIZE:
+                        self.direction *= -1
+                        self.moving_counter = 0
+                else:
+                    self.idle_counter -= 1
+                    if self.idle_counter <= 0:
+                        self.idle = False
 
+    def update_animation(self):
+        ANIMATION_COOLDOWN = 80
+        self.character_image = self.animation_list[self.action][self.frame_index]
+        if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
+            self.update_time = pygame.time.get_ticks()
+            self.frame_index += 1
+        if self.frame_index >= len(self.animation_list[self.action]):
+            if self.action == 3:
+                self.kill()  # Remove the sprite after the death animation is finished
+            else:    
+                self.frame_index = 0
 
-		
-	def update(self):
-		self.update_animation()
-		self.check_alive()
-		if self.shooting_cooldown > 0:
-			self.shooting_cooldown -= 1 #cooldown
-		
-		if not self.alive:
-			self.move(False, False)
+    def update_action(self, new_action):
+        if new_action != self.action:
+            self.action = new_action
+            self.frame_index = 0
+            self.update_time = pygame.time.get_ticks()
 
+    def check_alive(self):
+        if self.health <= 0 and self.alive:
+            self.health = 0
+            self.speed = 0
+            self.alive = False
+            self.update_action(3)  # Set to die animation
 
-	def shooting(self):
-		if self.shooting_cooldown == 0 and self.ammo > 0:
-			self.shooting_cooldown = 45
-			bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery - (-0.2 * self.rect.size[1]), self.direction)
-			bullet_group.add(bullet)
-			self.ammo -= 1
-			shot_fx.play()
+    def draw(self):
+        screen.blit(pygame.transform.flip(self.character_image,  self.flip, False), self.rect)
 
-	def ai(self):
-		if self.alive and player.alive:
-			if self.idle == False and random.randint(1, 200) == 1:
-				self.update_action(0)
-				self.idle = True
-				self.idle_counter = 50
-			#if the enemy sees player
-			if self.vision.colliderect(player.rect):
-				self.update_action(0) #go idle and shoot
-				self.shooting()
-			else:
-				if self.idle == False:
-					if self.direction == 1:
-						ai_moving_right = True
-					else:
-						ai_moving_right = False
-					ai_moving_left = not ai_moving_right
-					self.move(ai_moving_left, ai_moving_right)
-					self.update_action(1) #when running = run animation
-					self.moving_counter += 1
-					self.vision.center = (self.rect.centerx + 85 * self.direction, self.rect.centery) #so the vision moves with the enemy
-					#pygame.draw.rect(screen, RED, self.vision) #visualize enemy vision
-					if self.moving_counter > TILE_SIZE:
-						self.direction *= -1
-						self.moving_counter = 0
-				else:
-					self.idle_counter -= 1
-					if self.idle_counter <= 0:
-						self.idle = False
-
-	def update_animation(self):
-		ANIMATION_COOLDOWN = 80 #speed of animation
-		self.character_image = self.animation_list[self.action][self.frame_index]
-		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
-			self.update_time = pygame.time.get_ticks()
-			self.frame_index += 1
-		#reset back to index 1
-		if self.frame_index >= len(self.animation_list[self.action]):
-			if self.action == 3: #if animation is dead
-				self.frame_index = len(self.animation_list[self.action]) - 1
-			else:	
-				self.frame_index = 0
-
-	def update_action(self, new_action):
-		if new_action != self.action:
-			self.action = new_action
-			self.frame_index = 0
-			self.update_time = pygame.time.get_ticks()
-
-	def check_alive(self):
-		if self.health <= 0:
-			self.health = 0
-			self.speed = 0
-			self.alive = False
-			self.update_action(3)   
-
-	def draw(self):
-		screen.blit(pygame.transform.flip(self.character_image,  self.flip, False), self.rect)
-		#pygame.draw.rect(screen, GREEN, self.rect, 1) #collide box
 
 class Items(pygame.sprite.Sprite):
 	def __init__(self, item_type, x, y):
